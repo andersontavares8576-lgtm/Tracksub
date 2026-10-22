@@ -4,6 +4,10 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
+
 # SPA routing fallback for internal paths and deep linking (?eqp=...)
 [[redirects]]
   from = "/*"

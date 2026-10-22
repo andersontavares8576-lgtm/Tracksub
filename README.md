@@ -61,7 +61,42 @@ Ao escanear a etiqueta de qualquer equipamento (pela câmera do celular ou link 
 
 ---
 
+## ⚡ Formas de Hospedagem no Netlify
+
+### Opção 1: Via GitHub (Recomendado — Deploy Contínuo)
+1. Suba o código para seu repositório no GitHub.
+2. No Netlify, acesse **Add new site > Import an existing project > GitHub**.
+3. Selecione o repositório. O Netlify detectará automaticamente o arquivo `netlify.toml` (comando `npm run build`, pasta `dist`, Node 20).
+4. Em **Site configuration > Environment variables**, adicione as variáveis `VITE_FIREBASE_*`.
+5. Clique em **Deploy Site**.
+
+### Opção 2: Deploy Manual Imediato via Netlify Drop (Sem Git)
+1. No seu computador local, execute:
+   ```bash
+   npm run build
+   ```
+2. Acesse [app.netlify.com/drop](https://app.netlify.com/drop).
+3. **ATENÇÃO:** Arraste **APENAS** a pasta `dist` gerada (NÃO arraste a pasta raiz inteira do projeto!).
+4. O Netlify publicará a aplicação compilada instantaneamente.
+
+---
+
+## ⚠️ Diagnóstico e Solução de Erros Comuns no Netlify
+
+- **Erro `ERESOLVE could not resolve` no log do Netlify:**
+  - *Causa:* Conflito de peer dependencies no npm.
+  - *Solução:* Já configurado no projeto via `.npmrc` (`legacy-peer-deps=true`) e `netlify.toml` (`NPM_FLAGS = "--legacy-peer-deps"`).
+- **Tela em branco após upload via Netlify Drop:**
+  - *Causa:* Arrastar a pasta raiz do projeto em vez da pasta `dist`. Navegadores não executam arquivos `.tsx` puros sem compilação.
+  - *Solução:* Execute `npm run build` e arraste exclusivamente a pasta `dist/`.
+- **Erro de autorização no Firebase Auth / Firestore:**
+  - *Causa:* O domínio gerado pelo Netlify (ex: `seu-app.netlify.app`) precisa estar autorizado no Firebase.
+  - *Solução:* No [Firebase Console](https://console.firebase.google.com), vá em **Authentication > Settings > Authorized domains** e adicione o domínio do seu Netlify.
+
+---
+
 ## 📦 Backup e Restauração
 Disponível em **Configurações > Backup e Restauração de Dados**:
 - Exportação completa de todas as coleções em formato JSON estruturado.
 - Restauração validada com lotes atômicos (`writeBatch`).
+
