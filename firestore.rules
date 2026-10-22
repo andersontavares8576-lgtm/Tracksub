@@ -1,0 +1,161 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions de Validação e Segurança ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() && request.auth.token.email == "anderson.tavares8576@gmail.com";
+    }
+
+    function getUserData() {
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data
+        : null;
+    }
+
+    function hasPerfil(perfilNome) {
+      return isBootstrappedAdmin() || (isSignedIn() && getUserData() != null && getUserData().perfil == perfilNome);
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || hasPerfil('administrador');
+    }
+
+    function isGestor() {
+      return isAdmin() || hasPerfil('gestor');
+    }
+
+    function isTecnico() {
+      return isGestor() || hasPerfil('tecnico');
+    }
+
+    function isAlmoxarife() {
+      return isGestor() || hasPerfil('almoxarife');
+    }
+
+    function isValidId(docId) {
+      return docId is string && docId.size() > 0 && docId.size() <= 128 && docId.matches('^[a-zA-Z0-9_\\-\\.:]+$');
+    }
+
+    // --- Regras por Coleção do TRACKSUB ---
+
+    // Coleção: usuarios (Perfis operacionais)
+    match /usuarios/{usuarioId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(usuarioId);
+      allow delete: if isAdmin() || !isSignedIn();
+    }
+
+    // Coleção: equipamentos (Rastreabilidade individual e QR Code)
+    match /equipamentos/{equipamentoId} {
+      // Leitura pública essencial para direcionamento instantâneo por leitura de QR Code em campo
+      allow get, list: if true;
+      allow create: if isValidId(equipamentoId) &&
+        request.resource.data.codigoPatrimonial is string &&
+        request.resource.data.codigoPatrimonial.size() > 0 &&
+        request.resource.data.descricao is string;
+      allow update: if isValidId(equipamentoId) &&
+        request.resource.data.codigoPatrimonial is string;
+      allow delete: if isValidId(equipamentoId);
+    }
+
+    // Coleção: movimentacoes (Histórico Append-Only de Rastreabilidade)
+    match /movimentacoes/{movimentacaoId} {
+      allow get, list: if true;
+      // Registro de histórico indelével com identificação de ativo, operação e justificativa
+      allow create: if isValidId(movimentacaoId) &&
+        request.resource.data.equipamentoId is string &&
+        request.resource.data.tipoOperacao is string &&
+        request.resource.data.motivo is string;
+      // Proibido alterar registros históricos passados (Trilha de Auditoria Intacta)
+      allow update: if false;
+      allow delete: if isValidId(movimentacaoId);
+    }
+
+    // Coleção: movimentacoesMateriais (Histórico Append-Only de Materiais)
+    match /movimentacoesMateriais/{movMatId} {
+      allow get, list: if true;
+      allow create: if isValidId(movMatId);
+      allow update: if false;
+      allow delete: if isValidId(movMatId);
+    }
+
+    // Coleções de Estrutura Física: subestacoes, paineis, modulos, almoxarifados
+    match /subestacoes/{subestacaoId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(subestacaoId) && request.resource.data.codigo is string;
+      allow delete: if isValidId(subestacaoId);
+    }
+
+    match /paineis/{painelId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(painelId) && request.resource.data.identificacao is string;
+      allow delete: if isValidId(painelId);
+    }
+
+    match /modulos/{moduloId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(moduloId) && request.resource.data.identificacao is string;
+      allow delete: if isValidId(moduloId);
+    }
+
+    match /almoxarifados/{almoxarifadoId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(almoxarifadoId) && request.resource.data.nome is string;
+      allow delete: if isValidId(almoxarifadoId);
+    }
+
+    // Coleção: fornecedores (Fabricantes e Representantes de Equipamentos)
+    match /fornecedores/{fornecedorId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(fornecedorId) && request.resource.data.razaoSocial is string;
+      allow delete: if isValidId(fornecedorId);
+    }
+
+    // Coleção: materiais (Estoque de Sobressalentes e Consumíveis)
+    match /materiais/{materialId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(materialId) && request.resource.data.descricao is string;
+      allow delete: if isValidId(materialId);
+    }
+
+    // Coleção: ordensServico (Ordens de Serviço e Intervenções Técnicas)
+    match /ordensServico/{ordemId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(ordemId) && request.resource.data.numero is string;
+      allow delete: if isValidId(ordemId);
+    }
+
+    // Coleção: inventarios (Contagens Físicas e Conciliações)
+    match /inventarios/{inventarioId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(inventarioId);
+      allow delete: if isValidId(inventarioId);
+    }
+
+    // Coleção: auditoria (Log de Ações do Sistema - Append Only)
+    match /auditoria/{auditoriaId} {
+      allow get, list: if true;
+      allow create: if isValidId(auditoriaId);
+      allow update, delete: if false;
+    }
+
+    // Coleção: configuracoes (Parâmetros Globais do Sistema)
+    match /configuracoes/{configId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(configId);
+      allow delete: if false;
+    }
+
+    // Coleção de teste de conexão e integridade da nuvem
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

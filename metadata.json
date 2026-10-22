@@ -1,0 +1,10 @@
+{
+  "name": "TRACKSUB - Gestão e Rastreabilidade de Equipamentos e Materiais",
+  "description": "Sistema profissional de gestão, controle de estoque e rastreabilidade por QR Code de equipamentos e materiais em subestações elétricas.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
