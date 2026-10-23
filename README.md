@@ -10,7 +10,7 @@ Sistema profissional voltado a concessionárias de transmissão e distribuição
 - **Estilização:** Tailwind CSS v4
 - **Backend / Nuvem:** Google Cloud Firebase (Cloud Firestore & Firebase Authentication)
 - **Rastreabilidade:** Geração e leitura de QR Code (`qrcode`, `html5-qrcode`)
-- **Visualização de Dados:** Lucide Icons, Recharts
+- **Visualização de Dados:** Lucide Icons, Gráficos Vetoriais SVG Nativos de Alta Performance
 - **Hospedagem de Produção:** Netlify / GitHub Actions
 
 ---
@@ -22,7 +22,7 @@ Sistema profissional voltado a concessionárias de transmissão e distribuição
 | :--- | :--- |
 | **Comando de Build** | `npm run build` |
 | **Diretório de Publicação (Publish directory)** | `dist` |
-| **Node Version** | `20.x` ou `22.x` |
+| **Node Version** | `22.x` (ou `20.x`) |
 
 O arquivo `netlify.toml` e o `public/_redirects` já estão configurados no repositório para garantir roteamento SPA sem erro 404 e cabeçalhos de segurança (`X-Frame-Options`, `X-Content-Type-Options`, `Permissions-Policy`).
 

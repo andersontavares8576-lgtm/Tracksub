@@ -6,7 +6,8 @@
 
 [build.environment]
   NODE_VERSION = "22"
-  NPM_FLAGS = "--legacy-peer-deps"
+  NPM_FLAGS = "--legacy-peer-deps --no-engine-strict"
+  CI = "false"
 
 # SPA routing fallback for internal paths and deep linking (?eqp=...)
 [[redirects]]
