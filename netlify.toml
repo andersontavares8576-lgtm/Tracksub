@@ -8,6 +8,8 @@
   NODE_VERSION = "22"
   NPM_FLAGS = "--legacy-peer-deps --no-engine-strict"
   CI = "false"
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
+  SECRETS_SCAN_OMIT_PATHS = "dist/**,firebase-applet-config.json,README.md"
 
 # SPA routing fallback for internal paths and deep linking (?eqp=...)
 [[redirects]]

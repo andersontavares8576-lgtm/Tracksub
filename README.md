@@ -30,7 +30,7 @@ O arquivo `netlify.toml` e o `public/_redirects` já estão configurados no repo
 No painel do Netlify (**Site configuration > Environment variables**), adicione:
 
 ```env
-VITE_FIREBASE_API_KEY=AIzaSyBGK3AIn6vlJyudaNprmuovLL5izNRRAWA
+VITE_FIREBASE_API_KEY=sua_api_key_do_firebase (consulte firebase-applet-config.json)
 VITE_FIREBASE_AUTH_DOMAIN=gen-lang-client-0511572558.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=gen-lang-client-0511572558
 VITE_FIREBASE_STORAGE_BUCKET=gen-lang-client-0511572558.firebasestorage.app
@@ -38,7 +38,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=522247606326
 VITE_FIREBASE_APP_ID=1:522247606326:web:76293b161a3ad287f64897
 VITE_FIREBASE_DATABASE_ID=ai-studio-tracksubgestoera-291c7cb2-03a0-46f1-ab57-ed0aa0d12b8b
 ```
-*(Caso prefira, o arquivo `firebase-applet-config.json` na raiz do projeto já contém essas configurações públicas da aplicação Web).*
+*(As configurações públicas da aplicação Web são carregadas automaticamente do arquivo `firebase-applet-config.json`).*
 
 ---
 
