@@ -49,7 +49,7 @@ service cloud.firestore {
     match /usuarios/{usuarioId} {
       allow get, list: if true;
       allow create, update: if isValidId(usuarioId);
-      allow delete: if isAdmin() || !isSignedIn();
+      allow delete: if isValidId(usuarioId);
     }
 
     // Coleção: equipamentos (Rastreabilidade individual e QR Code)

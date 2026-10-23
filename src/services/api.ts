@@ -38,6 +38,7 @@ export const api = {
   loginComEmailSenha: (email: string, pass: string) => firestoreService.loginComEmailSenha(email, pass),
   criarConta: (email: string, pass: string, nome: string, cargo: string, perfil: PerfilUsuario) =>
     firestoreService.criarConta(email, pass, nome, cargo, perfil),
+  excluirUsuario: async (userId: string) => firestoreService.excluirUsuario(userId),
   logout: () => firestoreService.logout(),
 
   // Dashboard & Métricas
@@ -150,6 +151,14 @@ export const api = {
     return achado;
   },
   salvarMaterial: async (mat: Partial<Material>): Promise<Material> => firestoreService.salvarMaterial(mat),
+  excluirMaterial: async (id: string): Promise<{ success: boolean; message: string }> =>
+    firestoreService.excluirMaterial(id),
+  zerarEstoqueMaterial: async (id: string): Promise<Material> =>
+    firestoreService.zerarEstoqueMaterial(id),
+  zerarTodoEstoqueMateriais: async (): Promise<{ success: boolean; totalAfetados: number }> =>
+    firestoreService.zerarTodoEstoqueMateriais(),
+  excluirTodosMateriaisEEstoque: async (): Promise<{ success: boolean; totalExcluidos: number }> =>
+    firestoreService.excluirTodosMateriaisEEstoque(),
   movimentarEstoque: async (payload: any): Promise<MovimentacaoMaterial> =>
     firestoreService.registrarMovimentacaoMaterial(payload),
   getMovimentacoesMateriais: async (): Promise<MovimentacaoMaterial[]> =>
@@ -205,6 +214,14 @@ export const api = {
   zerarAtivos: async (): Promise<{ success: boolean; message: string }> => {
     const res = await firestoreService.zerarEquipamentosESubestacoes();
     return { success: true, message: `${res.totalExcluidos} registros de equipamentos, subestações, painéis e históricos foram excluídos do Cloud Firestore.` };
+  },
+  zerarMateriais: async (): Promise<{ success: boolean; message: string }> => {
+    const res = await firestoreService.excluirTodosMateriaisEEstoque();
+    return { success: true, message: `${res.totalExcluidos} registros de materiais e movimentações foram excluídos do Cloud Firestore.` };
+  },
+  zerarTodoEstoque: async (): Promise<{ success: boolean; message: string }> => {
+    const res = await firestoreService.zerarTodoEstoqueMateriais();
+    return { success: true, message: `O saldo de estoque de ${res.totalAfetados} materiais foi zerado com sucesso.` };
   },
 
   // Estratégia de Backup e Recuperação

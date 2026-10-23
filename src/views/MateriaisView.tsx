@@ -6,6 +6,9 @@ import {
   ArrowRightLeft,
   AlertTriangle,
   Edit2,
+  Trash2,
+  RotateCcw,
+  Eraser,
   DollarSign,
   TrendingDown,
   Warehouse,
@@ -21,6 +24,10 @@ interface MateriaisViewProps {
   onNovoMaterial: () => void;
   onEditarMaterial: (mat: Material) => void;
   onMovimentarMaterial: (mat: Material) => void;
+  onExcluirMaterial: (matId: string) => Promise<void>;
+  onZerarEstoqueMaterial: (matId: string) => Promise<void>;
+  onZerarTodoEstoque?: () => Promise<void>;
+  onZerarTodosMateriais?: () => Promise<void>;
 }
 
 export const MateriaisView: React.FC<MateriaisViewProps> = ({
@@ -30,7 +37,13 @@ export const MateriaisView: React.FC<MateriaisViewProps> = ({
   onNovoMaterial,
   onEditarMaterial,
   onMovimentarMaterial,
+  onExcluirMaterial,
+  onZerarEstoqueMaterial,
+  onZerarTodoEstoque,
+  onZerarTodosMateriais,
 }) => {
+  const [modalZerarAberto, setModalZerarAberto] = useState(false);
+  const [processando, setProcessando] = useState(false);
   const [busca, setBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('todas');
   const [filtroAlmoxarifado, setFiltroAlmoxarifado] = useState('todos');
@@ -75,13 +88,24 @@ export const MateriaisView: React.FC<MateriaisViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onNovoMaterial}
-          className="flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Cadastrar Material</span>
-        </button>
+        <div className="flex items-center space-x-2 shrink-0">
+          <button
+            onClick={() => setModalZerarAberto(true)}
+            className="flex items-center space-x-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-semibold transition shadow-2xs"
+            title="Opções para zerar saldo ou excluir materiais"
+          >
+            <Trash2 className="w-4 h-4 text-red-600" />
+            <span>Zerar / Limpar Estoque</span>
+          </button>
+
+          <button
+            onClick={onNovoMaterial}
+            className="flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Cadastrar Material</span>
+          </button>
+        </div>
       </div>
 
       {/* Cartões de Indicadores de Saldo */}
@@ -315,6 +339,42 @@ export const MateriaisView: React.FC<MateriaisViewProps> = ({
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
+
+                          <button
+                            onClick={async () => {
+                              const ok = window.confirm(
+                                `Deseja zerar o saldo de estoque do material "${mat.codigoInterno} - ${mat.descricao}"?\n\nAs quantidades física e disponível serão zeradas no Cloud Firestore.`
+                              );
+                              if (!ok) return;
+                              try {
+                                await onZerarEstoqueMaterial(mat.id);
+                              } catch (err: any) {
+                                alert(err.message || 'Erro ao zerar saldo do material.');
+                              }
+                            }}
+                            title="Zerar Saldo deste Material (Físico = 0)"
+                            className="p-1.5 rounded-lg text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={async () => {
+                              const ok = window.confirm(
+                                `Tem certeza que deseja excluir o material "${mat.codigoInterno} - ${mat.descricao}" permanentemente do catálogo e do Cloud Firestore?`
+                              );
+                              if (!ok) return;
+                              try {
+                                await onExcluirMaterial(mat.id);
+                              } catch (err: any) {
+                                alert(err.message || 'Erro ao excluir material.');
+                              }
+                            }}
+                            title="Excluir Material Permanentemente"
+                            className="p-1.5 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -325,6 +385,115 @@ export const MateriaisView: React.FC<MateriaisViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Modal de Confirmação para Zerar / Limpar Estoque Geral */}
+      {modalZerarAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-5">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 rounded-xl bg-red-100 text-red-700">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Zerar Estoque e Materiais</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Selecione o nível de limpeza desejado</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setModalZerarAberto(false)}
+                disabled={processando}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {/* Opção 1: Zerar Apenas os Saldos Físicos para 0 */}
+              <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 space-y-2">
+                <div className="font-bold text-amber-900 flex items-center justify-between">
+                  <span>Opção 1: Zerar Saldo de Todos os Materiais</span>
+                  <span className="text-[10px] bg-amber-200/80 text-amber-800 px-2 py-0.5 rounded-full font-semibold">Mantém Cadastro</span>
+                </div>
+                <p className="text-slate-600 leading-relaxed">
+                  Redefine as quantidades física, reservada e disponível de todos os <strong>{materiais.length} materiais</strong> para <strong>0</strong>. Os nomes, códigos e descrições dos itens continuam cadastrados.
+                </p>
+                <button
+                  disabled={processando || materiais.length === 0}
+                  onClick={async () => {
+                    const ok = window.confirm(
+                      'Confirma redefinir o saldo de estoque de TODOS os materiais para 0?'
+                    );
+                    if (!ok) return;
+                    try {
+                      setProcessando(true);
+                      if (onZerarTodoEstoque) {
+                        await onZerarTodoEstoque();
+                      }
+                      setModalZerarAberto(false);
+                    } catch (err: any) {
+                      alert(err.message || 'Erro ao zerar saldo de estoque.');
+                    } finally {
+                      setProcessando(false);
+                    }
+                  }}
+                  className="w-full mt-1 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold flex items-center justify-center space-x-2 transition disabled:opacity-50"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>{processando ? 'Processando...' : 'Zerar Saldo de Todos os Materiais'}</span>
+                </button>
+              </div>
+
+              {/* Opção 2: Excluir Todos os Materiais e Histórico (Começar do Zero) */}
+              <div className="p-4 rounded-xl border border-red-200 bg-red-50/60 space-y-2">
+                <div className="font-bold text-red-900 flex items-center justify-between">
+                  <span>Opção 2: Excluir Todos os Materiais e Movimentações</span>
+                  <span className="text-[10px] bg-red-200/80 text-red-800 px-2 py-0.5 rounded-full font-semibold">Limpeza Total</span>
+                </div>
+                <p className="text-slate-600 leading-relaxed">
+                  Exclui permanentemente todos os registros da coleção <code>materiais</code> e <code>movimentacoesMateriais</code> no Cloud Firestore. Indicado para iniciar a gestão de estoque do zero absoluto.
+                </p>
+                <button
+                  disabled={processando || materiais.length === 0}
+                  onClick={async () => {
+                    const ok = window.confirm(
+                      'ATENÇÃO: Deseja EXCLUIR PERMANENTEMENTE todos os materiais cadastrados e o histórico de movimentações? Esta ação não pode ser desfeita.'
+                    );
+                    if (!ok) return;
+                    try {
+                      setProcessando(true);
+                      if (onZerarTodosMateriais) {
+                        await onZerarTodosMateriais();
+                      }
+                      setModalZerarAberto(false);
+                    } catch (err: any) {
+                      alert(err.message || 'Erro ao excluir materiais.');
+                    } finally {
+                      setProcessando(false);
+                    }
+                  }}
+                  className="w-full mt-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold flex items-center justify-center space-x-2 transition disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>{processando ? 'Processando...' : 'Excluir Todos os Materiais do Banco'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setModalZerarAberto(false)}
+                disabled={processando}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -235,6 +235,11 @@ export default function App() {
     carregarDados();
   };
 
+  const handleExcluirUsuario = async (userId: string) => {
+    await api.excluirUsuario(userId);
+    await carregarDados();
+  };
+
   const handleSalvarEquipamento = async (eqpPayload: Partial<Equipamento>) => {
     await api.salvarEquipamento(eqpPayload);
     await carregarDados();
@@ -282,6 +287,28 @@ export default function App() {
   const handleSalvarMaterial = async (matPayload: Partial<Material>) => {
     await api.salvarMaterial(matPayload);
     await carregarDados();
+  };
+
+  const handleExcluirMaterial = async (id: string) => {
+    await api.excluirMaterial(id);
+    await carregarDados();
+  };
+
+  const handleZerarEstoqueMaterial = async (id: string) => {
+    await api.zerarEstoqueMaterial(id);
+    await carregarDados();
+  };
+
+  const handleZerarTodoEstoqueMateriais = async () => {
+    const res = await api.zerarTodoEstoque();
+    await carregarDados();
+    alert(res.message);
+  };
+
+  const handleZerarTodosMateriais = async () => {
+    const res = await api.zerarMateriais();
+    await carregarDados();
+    alert(res.message);
   };
 
   const handleConfirmarMovimentacaoMaterial = async (payload: any) => {
@@ -485,6 +512,10 @@ export default function App() {
                 setModalMaterialAberto(true);
               }}
               onMovimentarMaterial={(mat) => setModalMovMaterial(mat)}
+              onExcluirMaterial={handleExcluirMaterial}
+              onZerarEstoqueMaterial={handleZerarEstoqueMaterial}
+              onZerarTodoEstoque={handleZerarTodoEstoqueMateriais}
+              onZerarTodosMateriais={handleZerarTodosMateriais}
             />
           )}
 
@@ -604,6 +635,7 @@ export default function App() {
               usuarioAtual={usuarioAtual}
               onTrocarUsuario={handleTrocarUsuario}
               onCriarUsuario={handleCriarUsuario}
+              onExcluirUsuario={handleExcluirUsuario}
             />
           )}
 
@@ -617,6 +649,8 @@ export default function App() {
               onSalvarConfig={handleSalvarConfig}
               onRedefinirDados={handleRedefinirDados}
               onZerarAtivos={handleZerarAtivos}
+              onZerarMateriais={handleZerarTodosMateriais}
+              onZerarTodoEstoque={handleZerarTodoEstoqueMateriais}
               onExportarBackup={api.exportarBackupCompleto}
               onRestaurarBackup={api.restaurarBackup}
             />

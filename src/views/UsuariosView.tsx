@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Key,
   UserCheck,
+  Trash2,
   X,
 } from 'lucide-react';
 import { Usuario, PerfilUsuario } from '../types/tracksub.ts';
@@ -15,6 +16,7 @@ interface UsuariosViewProps {
   usuarioAtual: Usuario | null;
   onTrocarUsuario: (userId: string) => void;
   onCriarUsuario: (perfil: PerfilUsuario, nome: string, cargo: string) => Promise<void>;
+  onExcluirUsuario: (userId: string) => Promise<void>;
 }
 
 export const UsuariosView: React.FC<UsuariosViewProps> = ({
@@ -22,6 +24,7 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
   usuarioAtual,
   onTrocarUsuario,
   onCriarUsuario,
+  onExcluirUsuario,
 }) => {
   const [modalAberto, setModalAberto] = useState(false);
   const [nome, setNome] = useState('');
@@ -158,18 +161,43 @@ export const UsuariosView: React.FC<UsuariosViewProps> = ({
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-slate-400 truncate">
                   {ativo ? 'Sessão Atual' : 'Alternar para este usuário'}
                 </span>
-                {!ativo && (
-                  <button
-                    onClick={() => onTrocarUsuario(u.id)}
-                    className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition"
-                  >
-                    Trocar Perfil
-                  </button>
-                )}
+                <div className="flex items-center space-x-1.5 shrink-0">
+                  {!ativo ? (
+                    <>
+                      <button
+                        onClick={() => onTrocarUsuario(u.id)}
+                        className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition"
+                      >
+                        Trocar Perfil
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const ok = window.confirm(
+                            `Tem certeza que deseja excluir o usuário "${u.nome}" (${u.email})?\n\nEsta operação removerá o perfil do Cloud Firestore.`
+                          );
+                          if (!ok) return;
+                          try {
+                            await onExcluirUsuario(u.id);
+                          } catch (err: any) {
+                            alert(err.message || 'Erro ao excluir usuário.');
+                          }
+                        }}
+                        title="Excluir Usuário"
+                        className="p-1.5 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 transition"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                      Perfil Conectado
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           );

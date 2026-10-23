@@ -153,6 +153,27 @@ class FirestoreService {
     }
   }
 
+  public async excluirUsuario(id: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const snap = await getDocs(collection(db, 'usuarios'));
+      if (snap.docs.length <= 1) {
+        throw new Error('Não é possível excluir o único usuário restante no sistema.');
+      }
+      await deleteDoc(doc(db, 'usuarios', id));
+      if (this.currentUserCache?.id === id) {
+        const restantes = snap.docs.filter((d) => d.id !== id);
+        if (restantes.length > 0) {
+          this.currentUserCache = { id: restantes[0].id, ...(restantes[0].data() as any) } as Usuario;
+        } else {
+          this.currentUserCache = this.defaultAdminUser;
+        }
+      }
+      return { success: true, message: 'Usuário excluído com sucesso do Cloud Firestore.' };
+    } catch (err: any) {
+      throw new Error(formatarErroFirebase(err));
+    }
+  }
+
   public async switchUser(userId: string): Promise<Usuario> {
     const usrs = await this.getUsuarios();
     const achado = usrs.find((u) => u.id === userId);
@@ -1402,6 +1423,85 @@ class FirestoreService {
     try {
       await setDoc(doc(db, 'materiais', id), payload, { merge: true });
       return payload;
+    } catch (err: any) {
+      throw new Error(formatarErroFirebase(err));
+    }
+  }
+
+  public async excluirMaterial(id: string): Promise<{ success: boolean; message: string }> {
+    try {
+      await deleteDoc(doc(db, 'materiais', id));
+      return { success: true, message: 'Material excluído com sucesso do Cloud Firestore.' };
+    } catch (err: any) {
+      throw new Error(formatarErroFirebase(err));
+    }
+  }
+
+  public async zerarEstoqueMaterial(id: string): Promise<Material> {
+    try {
+      const ref = doc(db, 'materiais', id);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) throw new Error('Material não localizado.');
+      const atual = snap.data() as Material;
+      const atualizado: Material = {
+        ...atual,
+        quantidadeFisica: 0,
+        quantidadeReservada: 0,
+        quantidadeDisponivel: 0,
+        atualizadoEm: new Date().toISOString(),
+      };
+      await setDoc(ref, atualizado, { merge: true });
+      return atualizado;
+    } catch (err: any) {
+      throw new Error(formatarErroFirebase(err));
+    }
+  }
+
+  public async zerarTodoEstoqueMateriais(): Promise<{ success: boolean; totalAfetados: number }> {
+    try {
+      const snap = await getDocs(collection(db, 'materiais'));
+      if (snap.empty) return { success: true, totalAfetados: 0 };
+      const docs = snap.docs;
+      const tamanhoBatch = 350;
+      let total = 0;
+      for (let i = 0; i < docs.length; i += tamanhoBatch) {
+        const fatia = docs.slice(i, i + tamanhoBatch);
+        const batch = writeBatch(db);
+        fatia.forEach((d) => {
+          batch.update(d.ref, {
+            quantidadeFisica: 0,
+            quantidadeReservada: 0,
+            quantidadeDisponivel: 0,
+            atualizadoEm: new Date().toISOString(),
+          });
+        });
+        await batch.commit();
+        total += fatia.length;
+      }
+      return { success: true, totalAfetados: total };
+    } catch (err: any) {
+      throw new Error(formatarErroFirebase(err));
+    }
+  }
+
+  public async excluirTodosMateriaisEEstoque(): Promise<{ success: boolean; totalExcluidos: number }> {
+    try {
+      let total = 0;
+      const colecoes = ['materiais', 'movimentacoesMateriais'];
+      for (const col of colecoes) {
+        const snap = await getDocs(collection(db, col));
+        if (snap.empty) continue;
+        const docs = snap.docs;
+        const tamanhoBatch = 350;
+        for (let i = 0; i < docs.length; i += tamanhoBatch) {
+          const fatia = docs.slice(i, i + tamanhoBatch);
+          const batch = writeBatch(db);
+          fatia.forEach((d) => batch.delete(d.ref));
+          await batch.commit();
+          total += fatia.length;
+        }
+      }
+      return { success: true, totalExcluidos: total };
     } catch (err: any) {
       throw new Error(formatarErroFirebase(err));
     }

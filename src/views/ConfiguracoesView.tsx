@@ -7,6 +7,8 @@ interface ConfiguracoesViewProps {
   onSalvarConfig: (c: Partial<ConfiguracaoSistema>) => Promise<void>;
   onRedefinirDados: () => Promise<void>;
   onZerarAtivos?: () => Promise<void>;
+  onZerarMateriais?: () => Promise<void>;
+  onZerarTodoEstoque?: () => Promise<void>;
   onExportarBackup?: () => Promise<string>;
   onRestaurarBackup?: (json: string) => Promise<{ success: boolean; registrosRestaurados: number }>;
 }
@@ -16,6 +18,8 @@ export const ConfiguracoesView: React.FC<ConfiguracoesViewProps> = ({
   onSalvarConfig,
   onRedefinirDados,
   onZerarAtivos,
+  onZerarMateriais,
+  onZerarTodoEstoque,
   onExportarBackup,
   onRestaurarBackup,
 }) => {
@@ -349,6 +353,52 @@ export const ConfiguracoesView: React.FC<ConfiguracoesViewProps> = ({
           <Trash2 className="w-4 h-4" />
           <span>Zerar Equipamentos e Subestações</span>
         </button>
+      </div>
+
+      {/* Caixa de Zerar Materiais e Estoque */}
+      <div className="bg-amber-50/50 p-6 rounded-2xl border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h4 className="font-bold text-xs text-amber-900 uppercase tracking-wider">
+            Zerar Materiais e Estoque (Criar do Zero)
+          </h4>
+          <p className="text-xs text-amber-800 mt-1 max-w-xl">
+            Permite zerar os saldos de estoque de todos os materiais para 0 ou excluir todo o catálogo de materiais e histórico de movimentações para começar a catalogação do zero.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+          <button
+            onClick={async () => {
+              const ok = window.confirm(
+                'Confirma redefinir o saldo de estoque de TODOS os materiais para 0? Os cadastros de materiais serão mantidos.'
+              );
+              if (!ok) return;
+              if (onZerarTodoEstoque) {
+                await onZerarTodoEstoque();
+              }
+            }}
+            className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-xs transition"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Zerar Apenas Saldos</span>
+          </button>
+
+          <button
+            onClick={async () => {
+              const ok = window.confirm(
+                'ATENÇÃO: Deseja EXCLUIR TODOS OS MATERIAIS e o histórico de movimentações do Cloud Firestore para começar do zero?'
+              );
+              if (!ok) return;
+              if (onZerarMateriais) {
+                await onZerarMateriais();
+              }
+            }}
+            className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-xs transition"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Excluir Todos os Materiais</span>
+          </button>
+        </div>
       </div>
 
       {/* Caixa de Restauração de Dados de Demonstração */}
