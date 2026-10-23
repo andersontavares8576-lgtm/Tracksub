@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Cpu, AlertTriangle, CheckCircle2, ShieldCheck, Info } from 'lucide-react';
+import { X, Cpu, AlertTriangle, CheckCircle2, ShieldCheck, Info, UserCheck } from 'lucide-react';
 import {
   Equipamento,
   Subestacao,
@@ -10,6 +10,7 @@ import {
   EstadoConservacao,
   EstadoOperacional,
   CATEGORIAS_EQUIPAMENTOS,
+  Usuario,
 } from '../../types/tracksub.ts';
 
 interface ModalCadastroEquipamentoProps {
@@ -22,6 +23,8 @@ interface ModalCadastroEquipamentoProps {
   modulos: Modulo[];
   almoxarifados: Almoxarifado[];
   onSalvarModulo?: (modulo: Partial<Modulo>) => Promise<void>;
+  usuarios?: Usuario[];
+  usuarioAtual?: Usuario | null;
 }
 
 const FABRICANTES_SUGERIDOS = [
@@ -58,6 +61,8 @@ export const ModalCadastroEquipamento: React.FC<ModalCadastroEquipamentoProps> =
   modulos,
   almoxarifados,
   onSalvarModulo,
+  usuarios = [],
+  usuarioAtual,
 }) => {
   const [codigoPatrimonial, setCodigoPatrimonial] = useState('');
   const [tipo, setTipo] = useState<TipoEquipamento>('Relé de Proteção Multifunção');
@@ -73,9 +78,10 @@ export const ModalCadastroEquipamento: React.FC<ModalCadastroEquipamentoProps> =
   const [localizacaoDescricao, setLocalizacaoDescricao] = useState('');
   const [estadoConservacao, setEstadoConservacao] = useState<EstadoConservacao>('Novo');
   const [estadoOperacional, setEstadoOperacional] = useState<EstadoOperacional>('Sobressalente / Estoque');
-  const [responsavel, setResponsavel] = useState('Carlos Eduardo Silveira');
+  const [responsavel, setResponsavel] = useState('');
+  const [responsavelManual, setResponsavelManual] = useState(false);
   const [dataRetirada, setDataRetirada] = useState('');
-  const [dataInstalacao, setDataInstalacao] = useState(new Date().toISOString().split('T')[0]);
+  const [dataInstalacao, setDataInstalacao] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [salvandoModuloRapido, setSalvandoModuloRapido] = useState(false);
@@ -116,9 +122,14 @@ export const ModalCadastroEquipamento: React.FC<ModalCadastroEquipamentoProps> =
         setLocalizacaoDescricao(equipamentoParaEditar.localizacaoDescricao);
         setEstadoConservacao(equipamentoParaEditar.estadoConservacao);
         setEstadoOperacional(equipamentoParaEditar.estadoOperacional);
-        setResponsavel(equipamentoParaEditar.responsavel);
+        const respExistente = equipamentoParaEditar.responsavel || '';
+        setResponsavel(respExistente);
+        const existeNosCadastrados = usuarios.some(
+          (u) => u.nome.trim().toLowerCase() === respExistente.trim().toLowerCase()
+        );
+        setResponsavelManual(!existeNosCadastrados && respExistente.trim() !== '');
         setDataRetirada(equipamentoParaEditar.dataRetirada || '');
-        setDataInstalacao(equipamentoParaEditar.dataInstalacao || equipamentoParaEditar.dataAquisicao || '');
+        setDataInstalacao(equipamentoParaEditar.dataInstalacao || '');
         setObservacoes(equipamentoParaEditar.observacoes);
       } else {
         const ano = new Date().getFullYear();
@@ -137,13 +148,17 @@ export const ModalCadastroEquipamento: React.FC<ModalCadastroEquipamentoProps> =
         setLocalizacaoDescricao('Almoxarifado Central / Triagem Inicial');
         setEstadoConservacao('Novo');
         setEstadoOperacional('Sobressalente / Estoque');
-        setResponsavel('Carlos Eduardo Silveira');
+        const respPadrao =
+          usuarioAtual?.nome ||
+          (usuarios.length > 0 ? usuarios[0].nome : '');
+        setResponsavel(respPadrao);
+        setResponsavelManual(false);
         setDataRetirada('');
-        setDataInstalacao(new Date().toISOString().split('T')[0]);
+        setDataInstalacao('');
         setObservacoes('');
       }
     }
-  }, [aberto, equipamentoParaEditar, almoxarifados, modulos, paineis]);
+  }, [aberto, equipamentoParaEditar, almoxarifados, modulos, paineis, usuarios, usuarioAtual]);
 
   // Lista consolidada de sugestões cadastradas para a subestação (painéis e módulos)
   const sugestoesCadastradas = useMemo(() => {
@@ -195,8 +210,15 @@ export const ModalCadastroEquipamento: React.FC<ModalCadastroEquipamentoProps> =
     e.preventDefault();
     setErro(null);
 
-    if (!codigoPatrimonial.trim() || !descricao.trim() || !fabricante.trim() || !modelo.trim() || !numeroSerie.trim()) {
-      setErro('Preencha os campos obrigatórios assinalados com asterisco (*).');
+    if (
+      !codigoPatrimonial.trim() ||
+      !descricao.trim() ||
+      !fabricante.trim() ||
+      !modelo.trim() ||
+      !numeroSerie.trim() ||
+      !responsavel.trim()
+    ) {
+      setErro('Preencha todos os campos obrigatórios (*), incluindo o Responsável Técnico.');
       return;
     }
 
@@ -279,10 +301,10 @@ export const ModalCadastroEquipamento: React.FC<ModalCadastroEquipamentoProps> =
         estadoConservacao,
         estadoOperacional,
         responsavel,
-        dataRetirada,
-        dataInstalacao,
-        dataAquisicao: dataRetirada || dataInstalacao || new Date().toISOString().split('T')[0],
-        garantiaAte: dataInstalacao || '',
+        dataRetirada: dataRetirada.trim() || undefined,
+        dataInstalacao: dataInstalacao.trim() || undefined,
+        dataAquisicao: equipamentoParaEditar?.dataAquisicao || dataInstalacao.trim() || dataRetirada.trim() || new Date().toISOString().split('T')[0],
+        garantiaAte: equipamentoParaEditar?.garantiaAte || '',
         observacoes,
       });
 
@@ -703,16 +725,78 @@ export const ModalCadastroEquipamento: React.FC<ModalCadastroEquipamentoProps> =
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Responsável Técnico
-              </label>
-              <input
-                type="text"
-                value={responsavel}
-                onChange={(e) => setResponsavel(e.target.value)}
-                placeholder="Nome do técnico ou engenheiro"
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Responsável Técnico <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setResponsavelManual(!responsavelManual)}
+                  className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold underline"
+                  title="Alternar entre lista de usuários cadastrados e digitação manual"
+                >
+                  {responsavelManual ? 'Selecionar da lista de usuários' : '+ Outro nome'}
+                </button>
+              </div>
+
+              {responsavelManual ? (
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={responsavel}
+                    onChange={(e) => setResponsavel(e.target.value)}
+                    placeholder="Nome do técnico ou terceiro..."
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    required
+                  />
+                  {responsavel && (
+                    <button
+                      type="button"
+                      onClick={() => setResponsavel('')}
+                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 text-sm font-bold"
+                      title="Limpar campo"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <select
+                  value={responsavel}
+                  onChange={(e) => {
+                    if (e.target.value === '__OUTRO_MANUAL__') {
+                      setResponsavelManual(true);
+                      setResponsavel('');
+                    } else {
+                      setResponsavel(e.target.value);
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-800"
+                  required
+                >
+                  <option value="">Selecione um usuário cadastrado...</option>
+                  {usuarios.map((u) => (
+                    <option key={u.id} value={u.nome}>
+                      {u.nome} • {u.cargo || u.perfil.toUpperCase()} {u.matricula ? `(Mat: ${u.matricula})` : ''}
+                    </option>
+                  ))}
+                  {/* Se o responsável salvo anteriormente não constar na lista de usuários atuais */}
+                  {responsavel &&
+                    !usuarios.some((u) => u.nome.trim().toLowerCase() === responsavel.trim().toLowerCase()) && (
+                      <option value={responsavel}>
+                        {responsavel} (Responsável Atual / Externo)
+                      </option>
+                    )}
+                  <option value="__OUTRO_MANUAL__">+ Digitar outro responsável...</option>
+                </select>
+              )}
+              <span className="text-[11px] text-slate-500 mt-1 block">
+                {responsavelManual
+                  ? 'Modo manual: digite o nome do terceiro ou prestador.'
+                  : usuarios.find((u) => u.nome.trim().toLowerCase() === responsavel.trim().toLowerCase())?.cargo
+                    ? `Função: ${usuarios.find((u) => u.nome.trim().toLowerCase() === responsavel.trim().toLowerCase())?.cargo}`
+                    : 'Usuário cadastrado responsável pelo ativo.'}
+              </span>
             </div>
           </div>
 
@@ -730,15 +814,32 @@ export const ModalCadastroEquipamento: React.FC<ModalCadastroEquipamentoProps> =
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Data de Instalação
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Data de Instalação (Opcional)
+                </label>
+                {dataInstalacao && (
+                  <button
+                    type="button"
+                    onClick={() => setDataInstalacao('')}
+                    className="text-[10px] text-blue-600 hover:text-red-600 font-semibold underline"
+                    title="Limpar campo e deixar data de instalação em branco"
+                  >
+                    Deixar em branco
+                  </button>
+                )}
+              </div>
               <input
                 type="date"
                 value={dataInstalacao}
                 onChange={(e) => setDataInstalacao(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-800"
               />
+              <span className="text-[11px] text-slate-500 mt-1 block">
+                {dataInstalacao
+                  ? 'Data em que o ativo foi instalado em campo.'
+                  : 'Em branco (equipamento novo, sobressalente ou em estoque).'}
+              </span>
             </div>
           </div>
 

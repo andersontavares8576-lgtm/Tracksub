@@ -698,6 +698,8 @@ export default function App() {
           modulos={modulos}
           almoxarifados={almoxarifados}
           onSalvarModulo={handleSalvarModulo}
+          usuarios={usuarios}
+          usuarioAtual={usuarioAtual}
         />
       )}
 

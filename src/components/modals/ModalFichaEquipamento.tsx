@@ -19,9 +19,15 @@ import {
   History,
   QrCode as QrIcon,
   Trash2,
+  Download,
 } from 'lucide-react';
 import { Equipamento, Movimentacao, Usuario } from '../../types/tracksub.ts';
 import { formatarData, formatarDataHora, getEquipamentoQrUrl } from '../../utils/formatters.ts';
+import {
+  imprimirEtiquetaViaIframe,
+  baixarPdfEtiqueta,
+  imprimirFichaTecnicaCompleta,
+} from '../../utils/impressaoEtiqueta.ts';
 
 interface ModalFichaEquipamentoProps {
   equipamento: Equipamento | null;
@@ -49,9 +55,18 @@ export const ModalFichaEquipamento: React.FC<ModalFichaEquipamentoProps> = ({
   useEffect(() => {
     if (equipamento) {
       const qrAlvo = getEquipamentoQrUrl(equipamento);
-      QRCode.toDataURL(qrAlvo, { width: 180, margin: 1 }, (err, url) => {
-        if (!err && url) setQrUrl(url);
-      });
+      QRCode.toDataURL(
+        qrAlvo,
+        {
+          width: 800,
+          margin: 1,
+          color: { dark: '#000000', light: '#ffffff' },
+          errorCorrectionLevel: 'M',
+        },
+        (err, url) => {
+          if (!err && url) setQrUrl(url);
+        }
+      );
     }
   }, [equipamento]);
 
@@ -103,12 +118,58 @@ export const ModalFichaEquipamento: React.FC<ModalFichaEquipamentoProps> = ({
               </h2>
             </div>
           </div>
-          <button
-            onClick={onFechar}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (qrUrl) {
+                  imprimirEtiquetaViaIframe(equipamento, qrUrl);
+                } else {
+                  onAbrirEtiqueta(equipamento);
+                }
+              }}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+              title="Imprimir Etiqueta Térmica 60x40mm (ou Salvar como PDF)"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Imprimir Etiqueta (PDF)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                if (qrUrl) {
+                  await baixarPdfEtiqueta(equipamento, qrUrl);
+                }
+              }}
+              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition"
+              title="Baixar Arquivo PDF da Etiqueta"
+            >
+              <Download className="w-3.5 h-3.5 text-blue-400" />
+              <span>Baixar PDF</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (qrUrl) {
+                  imprimirFichaTecnicaCompleta(equipamento, movimentacoes, qrUrl);
+                }
+              }}
+              className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition"
+              title="Imprimir Ficha Técnica Completa em Folha A4"
+            >
+              <FileText className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Ficha A4</span>
+            </button>
+
+            <button
+              onClick={onFechar}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition ml-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Conteúdo com scroll */}
@@ -154,7 +215,7 @@ export const ModalFichaEquipamento: React.FC<ModalFichaEquipamentoProps> = ({
                   <span className="font-semibold text-slate-800">
                     {equipamento.dataInstalacao
                       ? formatarData(equipamento.dataInstalacao)
-                      : (equipamento.dataAquisicao ? formatarData(equipamento.dataAquisicao) : 'Não informada')}
+                      : 'Não instalada (Estoque / Sobressalente)'}
                   </span>
                 </div>
                 <div>
@@ -187,13 +248,47 @@ export const ModalFichaEquipamento: React.FC<ModalFichaEquipamentoProps> = ({
               <div className="font-mono text-[10px] text-blue-700 font-bold mt-1 truncate max-w-[130px]" title={equipamento.codigoPatrimonial}>
                 {equipamento.codigoPatrimonial}
               </div>
-              <button
-                onClick={() => onAbrirEtiqueta(equipamento)}
-                className="mt-2 w-full py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white rounded text-xs font-medium flex items-center justify-center space-x-1 transition shadow-xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Imprimir Etiqueta</span>
-              </button>
+              <div className="mt-2.5 w-full space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (qrUrl) {
+                      imprimirEtiquetaViaIframe(equipamento, qrUrl);
+                    } else {
+                      onAbrirEtiqueta(equipamento);
+                    }
+                  }}
+                  className="w-full py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition shadow-xs"
+                  title="Imprimir Etiqueta Térmica 60x40mm ou Salvar em PDF"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimir Etiqueta (PDF)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (qrUrl) {
+                      await baixarPdfEtiqueta(equipamento, qrUrl, '60x40');
+                    }
+                  }}
+                  className="w-full py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition"
+                  title="Baixar Etiqueta em Formato PDF com QR Code ampliado"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Baixar PDF (QR Ampliado)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onAbrirEtiqueta(equipamento)}
+                  className="w-full py-1.5 px-2 text-blue-700 bg-blue-50/60 hover:bg-blue-100 hover:text-blue-900 border border-blue-200/60 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition"
+                  title="Personalizar tamanho da etiqueta: 60x40, 80x50, 100x60 ou Maxi QR"
+                >
+                  <QrIcon className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Outros Tamanhos (80x50 / 100x60)</span>
+                </button>
+              </div>
             </div>
           </div>
 
