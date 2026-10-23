@@ -20,18 +20,298 @@ import {
   ArrowUpRight,
   RotateCcw,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+// Gráficos SVG Nativos de Alta Performance (Zero dependências externas e 100% compatível com Vite/Netlify)
+const SubestacaoBarChartSvg = ({
+  dados,
+  modo,
+}: {
+  dados: Array<{
+    nome: string;
+    nomeCompleto?: string;
+    tensao: string;
+    total: number;
+    emOperacao: number;
+    emManutencao: number;
+    emEstoque: number;
+  }>;
+  modo: 'total' | 'segmentado';
+}) => {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const maxVal = Math.max(...dados.map((d) => d.total), 5);
+  const ySteps = [maxVal, Math.round(maxVal * 0.75), Math.round(maxVal * 0.5), Math.round(maxVal * 0.25), 0];
+
+  return (
+    <div className="relative w-full h-[290px] flex flex-col justify-between pt-2">
+      <svg className="w-full h-[220px]" viewBox="0 0 600 200" preserveAspectRatio="none">
+        {/* Linhas de grade horizontais */}
+        {[0, 1, 2, 3, 4].map((i) => {
+          const y = 20 + i * 37.5;
+          return (
+            <line
+              key={i}
+              x1="45"
+              y1={y}
+              x2="590"
+              y2={y}
+              stroke="#f1f5f9"
+              strokeDasharray="3 3"
+              strokeWidth="1"
+            />
+          );
+        })}
+
+        {/* Rótulos do eixo Y */}
+        {ySteps.map((val, i) => {
+          const y = 20 + i * 37.5;
+          return (
+            <text
+              key={i}
+              x="38"
+              y={y + 4}
+              textAnchor="end"
+              fill="#94a3b8"
+              fontSize="10"
+              fontFamily="monospace"
+            >
+              {val}
+            </text>
+          );
+        })}
+
+        {/* Linha de base */}
+        <line x1="45" y1="170" x2="590" y2="170" stroke="#e2e8f0" strokeWidth="1.5" />
+
+        {/* Barras por Subestação */}
+        {dados.map((item, idx) => {
+          const totalWidth = 540;
+          const slotWidth = totalWidth / Math.max(1, dados.length);
+          const barWidth = Math.min(42, slotWidth * 0.6);
+          const x = 45 + idx * slotWidth + (slotWidth - barWidth) / 2;
+
+          const totalHeight = (item.total / maxVal) * 145;
+          const opHeight = (item.emOperacao / maxVal) * 145;
+          const manHeight = (item.emManutencao / maxVal) * 145;
+          const estHeight = (item.emEstoque / maxVal) * 145;
+
+          const isHovered = hoveredIdx === idx;
+
+          if (modo === 'total') {
+            const y = 170 - totalHeight;
+            return (
+              <g
+                key={idx}
+                onMouseEnter={() => setHoveredIdx(idx)}
+                onMouseLeave={() => setHoveredIdx(null)}
+                className="cursor-pointer transition-opacity"
+                opacity={hoveredIdx !== null && !isHovered ? 0.6 : 1}
+              >
+                <rect
+                  x={x}
+                  y={y}
+                  width={barWidth}
+                  height={Math.max(2, totalHeight)}
+                  rx="5"
+                  fill={isHovered ? '#1d4ed8' : '#2563eb'}
+                  className="transition-colors duration-150"
+                />
+              </g>
+            );
+          }
+
+          // Segmentado (stacked)
+          const yOp = 170 - opHeight;
+          const yMan = yOp - manHeight;
+          const yEst = yMan - estHeight;
+
+          return (
+            <g
+              key={idx}
+              onMouseEnter={() => setHoveredIdx(idx)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              className="cursor-pointer transition-opacity"
+              opacity={hoveredIdx !== null && !isHovered ? 0.6 : 1}
+            >
+              {item.emOperacao > 0 && (
+                <rect
+                  x={x}
+                  y={yOp}
+                  width={barWidth}
+                  height={Math.max(1, opHeight)}
+                  fill="#10b981"
+                />
+              )}
+              {item.emManutencao > 0 && (
+                <rect
+                  x={x}
+                  y={yMan}
+                  width={barWidth}
+                  height={Math.max(1, manHeight)}
+                  fill="#f59e0b"
+                />
+              )}
+              {item.emEstoque > 0 && (
+                <rect
+                  x={x}
+                  y={yEst}
+                  width={barWidth}
+                  height={Math.max(1, estHeight)}
+                  rx="4"
+                  fill="#3b82f6"
+                />
+              )}
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Rótulos do Eixo X */}
+      <div className="flex justify-between pl-11 pr-3 pt-1 text-[11px] text-slate-500 font-medium">
+        {dados.map((item, idx) => (
+          <div
+            key={idx}
+            className="flex-1 text-center truncate px-0.5 hover:text-slate-900 transition cursor-pointer"
+            title={`${item.nomeCompleto || item.nome} (${item.tensao})`}
+            onMouseEnter={() => setHoveredIdx(idx)}
+            onMouseLeave={() => setHoveredIdx(null)}
+          >
+            {item.nome}
+          </div>
+        ))}
+      </div>
+
+      {/* Tooltip Interativo */}
+      {hoveredIdx !== null && dados[hoveredIdx] && (
+        <div
+          className="absolute z-20 pointer-events-none bg-slate-900 text-white p-3 rounded-xl shadow-xl border border-slate-700 text-xs space-y-1.5 min-w-[200px]"
+          style={{
+            left: `${Math.min(70, Math.max(8, (hoveredIdx / dados.length) * 100))}%`,
+            top: '12px',
+          }}
+        >
+          <div className="font-bold text-slate-100 border-b border-slate-700/80 pb-1.5 flex items-center justify-between">
+            <span className="truncate max-w-[140px]">
+              {dados[hoveredIdx].nomeCompleto || dados[hoveredIdx].nome}
+            </span>
+            <span className="text-[10px] text-blue-400 font-mono ml-2 shrink-0">
+              {dados[hoveredIdx].tensao}
+            </span>
+          </div>
+          <div className="flex justify-between text-slate-300 pt-0.5">
+            <span>Total de Ativos:</span>
+            <span className="font-bold font-mono text-white tabular-nums">
+              {dados[hoveredIdx].total}
+            </span>
+          </div>
+          {dados[hoveredIdx].emOperacao > 0 && (
+            <div className="flex justify-between text-emerald-400">
+              <span>Em Operação:</span>
+              <span className="font-bold font-mono tabular-nums">
+                {dados[hoveredIdx].emOperacao}
+              </span>
+            </div>
+          )}
+          {dados[hoveredIdx].emManutencao > 0 && (
+            <div className="flex justify-between text-amber-400">
+              <span>Manutenção / Ensaio:</span>
+              <span className="font-bold font-mono tabular-nums">
+                {dados[hoveredIdx].emManutencao}
+              </span>
+            </div>
+          )}
+          {dados[hoveredIdx].emEstoque > 0 && (
+            <div className="flex justify-between text-blue-400">
+              <span>Sobressalente:</span>
+              <span className="font-bold font-mono tabular-nums">
+                {dados[hoveredIdx].emEstoque}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DonutStatusChartSvg = ({
+  dados,
+  total,
+  percentualOperando,
+}: {
+  dados: Array<{ name: string; value: number; color: string }>;
+  total: number;
+  percentualOperando: number;
+}) => {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  const radius = 68;
+  const strokeWidth = 24;
+  const circumference = 2 * Math.PI * radius;
+
+  let accumulatedPercent = 0;
+
+  return (
+    <div className="relative flex items-center justify-center w-full h-[210px]">
+      <svg className="w-[190px] h-[190px] -rotate-90" viewBox="0 0 180 180">
+        <circle
+          cx="90"
+          cy="90"
+          r={radius}
+          fill="none"
+          stroke="#f1f5f9"
+          strokeWidth={strokeWidth}
+        />
+        {dados.map((item, idx) => {
+          const percent = total > 0 ? item.value / total : 0;
+          const dashLength = percent * circumference;
+          const strokeDashoffset = -(accumulatedPercent * circumference);
+          accumulatedPercent += percent;
+
+          const isHovered = hoveredIdx === idx;
+
+          return (
+            <circle
+              key={idx}
+              cx="90"
+              cy="90"
+              r={radius}
+              fill="none"
+              stroke={item.color}
+              strokeWidth={isHovered ? strokeWidth + 4 : strokeWidth}
+              strokeDasharray={`${dashLength} ${circumference - dashLength}`}
+              strokeDashoffset={strokeDashoffset}
+              className="cursor-pointer transition-all duration-200"
+              onMouseEnter={() => setHoveredIdx(idx)}
+              onMouseLeave={() => setHoveredIdx(null)}
+            />
+          );
+        })}
+      </svg>
+
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+        <span className="text-2xl font-black text-slate-900 tabular-nums">
+          {percentualOperando}%
+        </span>
+        <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+          Operacional
+        </span>
+      </div>
+
+      {hoveredIdx !== null && dados[hoveredIdx] && (
+        <div className="absolute -top-10 bg-slate-900 text-white p-2 rounded-xl shadow-xl border border-slate-700 text-xs pointer-events-none flex items-center space-x-2 z-20">
+          <span
+            className="w-2.5 h-2.5 rounded-full"
+            style={{ backgroundColor: dados[hoveredIdx].color }}
+          />
+          <span className="font-semibold">{dados[hoveredIdx].name}:</span>
+          <span className="font-bold tabular-nums font-mono">{dados[hoveredIdx].value}</span>
+          <span className="text-slate-400">
+            ({total > 0 ? ((dados[hoveredIdx].value / total) * 100).toFixed(1) : 0}%)
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
 import { DashboardStats, Subestacao, Equipamento } from '../types/tracksub.ts';
 import { formatarData, formatarDataHora, formatarMoeda, formatarNumero } from '../utils/formatters.ts';
 
@@ -210,70 +490,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const percentualOperando = totalEquipamentosEscopo > 0
     ? Math.round((operandoCalculado / totalEquipamentosEscopo) * 100)
     : 0;
-
-  // Tooltip customizado para o gráfico de subestações
-  const CustomSubestacaoTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl border border-slate-700 text-xs space-y-1.5 min-w-[200px]">
-          <div className="font-bold text-slate-100 border-b border-slate-700/80 pb-1.5 flex items-center justify-between">
-            <span className="truncate max-w-[140px]">{data.nomeCompleto || data.nome}</span>
-            <span className="text-[10px] text-blue-400 font-mono ml-2 shrink-0">{data.tensao}</span>
-          </div>
-          <div className="flex justify-between text-slate-300 pt-0.5">
-            <span>Total de Ativos:</span>
-            <span className="font-bold font-mono text-white tabular-nums">{formatarNumero(data.total)}</span>
-          </div>
-          {data.emOperacao > 0 && (
-            <div className="flex justify-between text-emerald-400">
-              <span>Em Operação:</span>
-              <span className="font-bold font-mono tabular-nums">{formatarNumero(data.emOperacao)}</span>
-            </div>
-          )}
-          {data.emManutencao > 0 && (
-            <div className="flex justify-between text-amber-400">
-              <span>Manutenção / Ensaio:</span>
-              <span className="font-bold font-mono tabular-nums">{formatarNumero(data.emManutencao)}</span>
-            </div>
-          )}
-          {data.emEstoque > 0 && (
-            <div className="flex justify-between text-blue-400">
-              <span>Sobressalente:</span>
-              <span className="font-bold font-mono tabular-nums">{formatarNumero(data.emEstoque)}</span>
-            </div>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Tooltip customizado para o gráfico de status operacional (Donut)
-  const CustomStatusTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0];
-      const total = totalEquipamentosEscopo || 1;
-      const perc = ((data.value / total) * 100).toFixed(1);
-      return (
-        <div className="bg-slate-900 text-white p-2.5 rounded-xl shadow-xl border border-slate-700 text-xs space-y-1 min-w-[170px]">
-          <div className="font-bold text-slate-100 flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: data.payload.color }} />
-            <span>{data.name}</span>
-          </div>
-          <div className="flex justify-between text-slate-300 pt-1 border-t border-slate-800">
-            <span>Quantidade:</span>
-            <span className="font-bold font-mono text-white tabular-nums">{formatarNumero(data.value)}</span>
-          </div>
-          <div className="flex justify-between text-slate-400">
-            <span>Percentual:</span>
-            <span className="font-bold font-mono text-slate-200 tabular-nums">{perc}%</span>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
 
   if (!stats) {
     return (
@@ -579,61 +795,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="w-full h-[290px]">
-                  <ResponsiveContainer width="100%" height={290}>
-                    <BarChart
-                      data={dadosSubestacoes.slice(0, 8)}
-                      margin={{ top: 12, right: 12, left: -16, bottom: 28 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="nome"
-                        tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
-                        axisLine={{ stroke: '#e2e8f0' }}
-                        tickLine={false}
-                        interval={0}
-                        angle={-15}
-                        textAnchor="end"
-                      />
-                      <YAxis
-                        tick={{ fill: '#64748b', fontSize: 11 }}
-                        axisLine={false}
-                        tickLine={false}
-                        allowDecimals={false}
-                      />
-                      <Tooltip content={<CustomSubestacaoTooltip />} />
-                      {modoVisualizacaoSE === 'total' ? (
-                        <Bar
-                          dataKey="total"
-                          name="Total de Equipamentos"
-                          fill="#2563eb"
-                          radius={[6, 6, 0, 0]}
-                        />
-                      ) : (
-                        <>
-                          <Bar
-                            dataKey="emOperacao"
-                            name="Em Operação"
-                            stackId="seStack"
-                            fill="#10b981"
-                          />
-                          <Bar
-                            dataKey="emManutencao"
-                            name="Manutenção / Ensaio"
-                            stackId="seStack"
-                            fill="#f59e0b"
-                          />
-                          <Bar
-                            dataKey="emEstoque"
-                            name="Sobressalente"
-                            stackId="seStack"
-                            fill="#3b82f6"
-                            radius={[6, 6, 0, 0]}
-                          />
-                        </>
-                      )}
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="w-full">
+                  <SubestacaoBarChartSvg
+                    dados={dadosSubestacoes.slice(0, 8)}
+                    modo={modoVisualizacaoSE}
+                  />
                 </div>
               )}
             </div>
@@ -707,40 +873,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               ) : (
                 <div className="w-full grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                   {/* Donut Chart com Indicador Central */}
-                  <div className="sm:col-span-7 relative flex items-center justify-center h-[210px]">
-                    <ResponsiveContainer width="100%" height={210}>
-                      <PieChart>
-                        <Tooltip content={<CustomStatusTooltip />} />
-                        <Pie
-                          data={dadosStatusOperacional}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={58}
-                          outerRadius={86}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          {dadosStatusOperacional.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={entry.color}
-                              stroke="#ffffff"
-                              strokeWidth={2}
-                            />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-
-                    {/* Rótulo Central no Donut */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                      <span className="text-2xl font-black text-slate-900 tabular-nums">
-                        {percentualOperando}%
-                      </span>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                        Operacional
-                      </span>
-                    </div>
+                  <div className="sm:col-span-7 relative flex items-center justify-center">
+                    <DonutStatusChartSvg
+                      dados={dadosStatusOperacional}
+                      total={totalEquipamentosEscopo}
+                      percentualOperando={percentualOperando}
+                    />
                   </div>
 
                   {/* Lista Limpa de Status (Sem pílulas estáticas) */}
